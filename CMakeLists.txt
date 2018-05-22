@@ -20,4 +20,19 @@
 #   DEALINGS IN THE SOFTWARE.
 #
 
-corrade_add_test(NeoVimApiTest NeoVimApiTest.cpp LIBRARIES NeovimApi CorradeNet mpack)
+cmake_minimum_required(VERSION 2.8.12)
+project(MagnumNeoVimApi)
+
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PROJECT_SOURCE_DIR}/modules/")
+
+add_library(mpack STATIC
+    ${CMAKE_SOURCE_DIR}/mpack/src/mpack/mpack-common.c
+    ${CMAKE_SOURCE_DIR}/mpack/src/mpack/mpack-expect.c
+    ${CMAKE_SOURCE_DIR}/mpack/src/mpack/mpack-node.c
+    ${CMAKE_SOURCE_DIR}/mpack/src/mpack/mpack-platform.c
+    ${CMAKE_SOURCE_DIR}/mpack/src/mpack/mpack-reader.c
+    ${CMAKE_SOURCE_DIR}/mpack/src/mpack/mpack-writer.c
+)
+target_include_directories(mpack PUBLIC ${CMAKE_SOURCE_DIR}/mpack/src/)
+
+add_subdirectory(src)

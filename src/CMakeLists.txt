@@ -20,18 +20,30 @@
 #   DEALINGS IN THE SOFTWARE.
 #
 
-find_package(Corrade REQUIRED TestSuite)
+find_package(Corrade REQUIRED TestSuite Containers)
+find_package(Magnum REQUIRED)
 
 add_subdirectory(Corrade/Net/)
 
 set_directory_properties(PROPERTIES CORRADE_USE_PEDANTIC_FLAGS ON)
 
-include_directories(${CMAKE_SOURCE_DIR}/mpack/src/ ${CMAKE_CURRENT_SOURCE_DIR})
+include_directories(
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_BINARY_DIR}
+)
+
 add_custom_target(generate ALL
     python ${CMAKE_SOURCE_DIR}/generate_bindings.py
            -n ${CMAKE_SOURCE_DIR}/Neovim/bin/nvim.exe
            -t ${CMAKE_SOURCE_DIR}/template
-           -o ${CMAKE_BINARY_DIR})
+           -o ${CMAKE_CURRENT_BINARY_DIR}
+)
+set_source_files_properties(${CMAKE_CURRENT_BINARY_DIR}/neovimapi2.cpp PROPERTIES GENERATED TRUE)
+
+# Compile generated sources to a static lib
+add_library(NeovimApi STATIC ${CMAKE_CURRENT_BINARY_DIR}/neovimapi2.cpp)
+target_link_libraries(NeovimApi Magnum::Magnum CorradeNet Corrade::Containers mpack)
+add_dependencies(NeovimApi generate)
 
 if(BUILD_TESTS)
     enable_testing()

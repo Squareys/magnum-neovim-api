@@ -1,5 +1,5 @@
 /*
-    This file is part of MagnumNeoVimApi.
+    This file is part of MagnumNeovimApi.
 
     Copyright © 2018 Jonathan Hale <squareys@googlemail.com>
 
@@ -30,7 +30,9 @@
 
 #include "Corrade/Net/Socket.h"
 
-namespace NeoVimApi {
+#include "neovimapi2.h"
+
+namespace NeovimApi {
 
 using namespace Corrade;
 
@@ -38,10 +40,15 @@ struct Test: TestSuite::Tester {
     explicit Test();
 
     void test();
+
+    void testGenerated();
 };
 
 Test::Test() {
-    addTests({&Test::test});
+    addTests({
+        &Test::test,
+        &Test::testGenerated
+    });
 }
 
 void Test::test() {
@@ -93,6 +100,13 @@ void Test::test() {
     mpack_print(response.data(), response.size());
 }
 
+void Test::testGenerated() {
+    NeovimApi::NeovimApi2 nvim{6666};
+    nvim.nvim_eval("'hello' . 'world!\n'");
+
+    CORRADE_VERIFY(true);
 }
 
-CORRADE_TEST_MAIN(NeoVimApi::Test)
+}
+
+CORRADE_TEST_MAIN(NeovimApi::Test)
