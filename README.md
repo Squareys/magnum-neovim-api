@@ -1,7 +1,7 @@
 Magnum Neovim API
 =================
 
-*Neovim API binding generator using [Magnum](http://magnum.graphics) types*
+*Neovim API bindings generator and library using [Magnum](http://magnum.graphics) types*
 
 A small generated library which talks to [neovim](https://neovim.io) via TCP and their
 [msgpack-rpc](https://github.com/msgpack-rpc/msgpack-rpc/blob/master/spec.md)
