@@ -35,6 +35,7 @@
 namespace NeovimApi {
 
 using namespace Corrade;
+using namespace Magnum;
 
 struct Test: TestSuite::Tester {
     explicit Test();
@@ -62,7 +63,7 @@ void Test::test() {
     mpack_start_array(&writer, 4);
 
     const int type = 0;
-    const int msgid = 0;
+    const int msgid = 42;
 
     mpack_write_i32(&writer, type);
     mpack_write_i32(&writer, msgid);
@@ -98,13 +99,31 @@ void Test::test() {
     */
 
     mpack_print(response.data(), response.size());
+
+    mpack_reader_t reader;
+    mpack_reader_init_data(&reader, response.data(), response.size());
+    mpack_expect_array_max(&reader, 4);
+
+    CORRADE_COMPARE(mpack_expect_i32(&reader), 1);
+    CORRADE_COMPARE(mpack_expect_u32(&reader), msgid);
+    mpack_type_t errorTag = mpack_read_tag(&reader).type;
+    CORRADE_COMPARE(errorTag, mpack_type_nil);
+
+    const mpack_tag_t result = mpack_peek_tag(&reader);
+    char strBuf[512];
+    mpack_expect_cstr(&reader, strBuf, sizeof(strBuf));
+    CORRADE_COMPARE("helloworld!\n", std::string(strBuf));
+
+    mpack_done_array(&reader);
+    CORRADE_VERIFY(mpack_reader_destroy(&reader) == mpack_ok);
 }
 
 void Test::testGenerated() {
     NeovimApi::NeovimApi2 nvim{6666};
-    nvim.nvim_eval("'hello' . 'world!\n'");
+    Object o = nvim.nvim_eval("'hello' . 'world!\n'");
+    CORRADE_COMPARE("helloworld!\n", o.s);
 
-    CORRADE_VERIFY(true);
+    nvim.nvim_ui_attach(25, 25, {});
 }
 
 }

@@ -58,6 +58,7 @@ class NeovimTypeVal:
     SIMPLETYPES = {
             'Integer': 'Long',
             'Boolean': 'bool',
+            'Float': 'Double',
             'Object': 'Object',
             'Array': 'Corrade::Containers::Array<Object>',
             'Dictionary': 'const std::unordered_map<std::string, Object>&',
@@ -81,22 +82,22 @@ class NeovimTypeVal:
         self.neovim_type = typename
         self.ext = False
         self.native_type = NeovimTypeVal.nativeType(typename, out=out)
+        self.elemtype = None
 
-        self.sendmethod = 'send'
-        self.decodemethod = 'decodeMsgpack'
         if typename in self.SIMPLETYPES:
             pass
         elif typename in self.EXTTYPES:
             self.ext = True
-            # FIXME
-            #self.sendmethod = 'send%s' % typename
-            #self.decodemethod = 'decodeMsgpackAs%s' % typename
         elif self.UNBOUND_ARRAY.match(typename):
             m = self.UNBOUND_ARRAY.match(typename)
-            elemtype = m.groups()[0]
-            self.sendmethod = 'sendArrayOf'
+            self.elemtype = m.groups()[0]
+            self.native_elemtype = NeovimTypeVal.nativeType(self.elemtype, out=True)
         else:
             self.native_type = NeovimTypeVal.nativeType(typename, out)
+
+        if typename == "Array":
+            self.elemtype = "Object"
+            self.native_elemtype = NeovimTypeVal.nativeType("Object", out=True)
 
     @classmethod
     def nativeType(cls, typename, out=False):
