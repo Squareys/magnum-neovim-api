@@ -94,10 +94,20 @@ void Socket::send(Containers::ArrayView<char> data) {
     }
 }
 
-Containers::ArrayView<char> Socket::receive(Containers::Array<char>& dest) {
+Containers::ArrayView<char> Socket::receive(Containers::Array<char>& dest, int timeout) {
     CORRADE_ASSERT(_connected, "Socket::receive(): socket not connected", {});
 
-    const int ret = recv(_data->socket, dest.data(), dest.size(), 0);
+    /* Wait timeout milliseconds to receive data */
+    fd_set sockets{1};
+    sockets.fd_array[0] = _data->socket;
+    const timeval t{0, timeout*1000};
+    int ret = select(0, &sockets, nullptr, nullptr, (timeout == -1) ? nullptr : &t);
+    if(ret == 0) {
+        /* Timeout */
+        return nullptr;
+    }
+
+    ret = recv(_data->socket, dest.data(), dest.size(), 0);
     if(ret < 0) {
         Utility::Error() << "Socket::receive(): recv failed with error:" << WSAGetLastError();
         return {};

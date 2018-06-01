@@ -200,9 +200,9 @@ void NeovimApi{{api_level}}::handleNotification(mpack_reader_t& reader) {
 }
 
 template<typename T>
-auto NeovimApi{{api_level}}::waitForResponse(Int msgId) {
+auto NeovimApi{{api_level}}::waitForResponse(Int msgId, Int timeout) {
     do {
-        Containers::ArrayView<char> response = _socket.receive(_receiveBuffer);
+        Containers::ArrayView<char> response = _socket.receive(_receiveBuffer, timeout);
         // if(response.size() == 0 || response.data() == nullptr) ...
         if(response.size() == _receiveBuffer.size()) {
             Warning() << "NeovimApi{{api_level}}::waitForResponse(): Receive buffer was full";

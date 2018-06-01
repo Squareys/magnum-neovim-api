@@ -67,13 +67,17 @@ public:
     /**
      * @brief Blocking method to receive data
      * @param buffer Buffer to write to.
+     * @param timeout Timeout in ms, default `-1`.
      * @return valid range in `buffer`.
      *
      * Returns either an ArrayView of size `0`, which indicates
      * a closed connection, or a prefix of `buffer` with the received
      * data.
+     *
+     * Will wait up to `timeout` ms, or block until data is received,
+     * in case `timeout` is `-1`. Returns `ArrayView{nullptr}`, if timed out.
      */
-    Containers::ArrayView<char> receive(Containers::Array<char>& buffer);
+    Containers::ArrayView<char> receive(Containers::Array<char>& buffer, int timeout=-1);
 
 private:
     struct SocketData;

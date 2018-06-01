@@ -28,6 +28,7 @@ enum class MessageType: Int {
 };
 
 enum class NotificationType: Int {
+    Timeout = -1,
 {% for n in notifications %}
     {{ n.name }},
 {% endfor %}
@@ -91,13 +92,14 @@ public:
     /**
      * @brief Wait for a reponse to a dispatched request with given id
      * @param msgId Message id to wait for a response to
+     * @param timeout Timeout in ms, `-1` for infinite timeout, default `-1`.
      * @return The return value from the response
      *
      * This method will save all encountered notifications for later.
      * See @ref pollNotifications().
      */
     template<typename T>
-    auto waitForResponse(Int msgId);
+    auto waitForResponse(Int msgId, Int timeout=-1);
 
     /**
      * @brief Poll pending notifications
