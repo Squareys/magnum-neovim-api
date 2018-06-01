@@ -43,6 +43,7 @@ set_source_files_properties(${CMAKE_CURRENT_BINARY_DIR}/neovimapi2.cpp PROPERTIE
 # Compile generated sources to a static lib
 add_library(NeovimApi STATIC ${CMAKE_CURRENT_BINARY_DIR}/neovimapi2.cpp)
 target_link_libraries(NeovimApi Magnum::Magnum CorradeNet Corrade::Containers mpack)
+target_compile_features(NeovimApi PRIVATE cxx_std_17)
 add_dependencies(NeovimApi generate)
 
 if(BUILD_TESTS)
