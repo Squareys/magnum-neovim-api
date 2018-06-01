@@ -102,6 +102,18 @@ public:
     auto waitForResponse(Int msgId, Int timeout=-1);
 
     /**
+     * @brief Wait for the next notification
+     * @param timeout Timeout in ms, `-1` for infinite timeout, default `-1`.
+     *
+     * Waits for the next notification. Blocks in case there are no notifications stored,
+     * otherwise returns the first notification from stored notifications.
+     * If the wait timed out, will return notification type @ref NotificationType::Timeout.
+     *
+     * @see pollNotifications()
+     */
+    Notification waitForNotification(Int timeout=-1);
+
+    /**
      * @brief Poll pending notifications
      * @return array of notifications
      *
@@ -135,7 +147,7 @@ private:
     /* Generate the next message id */
     int nextMessageId() { return _nextMessageId++; }
 
-    void handleNotification(mpack_reader_t& reader);
+    Notification handleNotification(mpack_reader_t& reader);
 };
 
 }

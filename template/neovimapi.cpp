@@ -188,7 +188,7 @@ Int NeovimApi{{api_level}}::dispatch(const std::string& func, Args... args) {
     return msgId;
 }
 
-void NeovimApi{{api_level}}::handleNotification(mpack_reader_t& reader) {
+Notification NeovimApi{{api_level}}::handleNotification(mpack_reader_t& reader) {
     const NotificationType func = (NotificationType)mpack_expect_enum(&reader, getNotificationTypeStrings(), Int(NotificationType::Count));
 
     /* Get parameter binary data */
@@ -196,7 +196,42 @@ void NeovimApi{{api_level}}::handleNotification(mpack_reader_t& reader) {
     const size_t remainingCount = mpack_reader_remaining(&reader, &remainingBuffer);
     Notification n{func, Containers::Array<char>{Containers::NoInit, remainingCount}};
     std::copy_n(remainingBuffer, remainingCount, n.parameters.data());
-    _notifications.push_back(std::move(n));
+    return n;
+}
+
+Notification NeovimApi{{api_level}}::waitForNotification(Int timeout) {
+    if(!_notifications.empty()) {
+        Notification n = std::move(*_notifications.begin());
+        _notifications.erase(_notifications.begin());
+        return n;
+    }
+
+    do {
+        Containers::ArrayView<char> response = _socket.receive(_receiveBuffer, timeout);
+        if(response.size() == 0 || response.data() == nullptr) {
+            return {NotificationType::Timeout, nullptr};
+        }
+        if(response.size() == _receiveBuffer.size()) {
+            Warning() << "NeovimApi{{api_level}}::waitForResponse(): Receive buffer was full";
+            // TODO: Handle requests over multiple buffers
+        }
+
+        mpack_reader_t reader;
+        mpack_reader_init_data(&reader, response.data(), response.size());
+
+        mpack_expect_array_max(&reader, 4);
+        const MessageType type = MessageType(mpack_expect_i32(&reader));
+
+        if(type == MessageType::Notification) {
+            return handleNotification(reader);
+        } else if(type == MessageType::Response) {
+            Error() << "Responses while waiting for notifications not implemented";
+        } else if(type == MessageType::Request) {
+            Error() << "Requests while waiting for notifications not implemented";
+        } else {
+            Error() << "Unknown message type" << Int(type);
+        }
+    } while(true);
 }
 
 template<typename T>
@@ -216,7 +251,7 @@ auto NeovimApi{{api_level}}::waitForResponse(Int msgId, Int timeout) {
         const MessageType type = MessageType(mpack_expect_i32(&reader));
 
         if(type == MessageType::Notification) {
-            handleNotification(reader);
+            _notifications.push_back(handleNotification(reader));
         } else if(type == MessageType::Response) {
             if(mpack_expect_u32(&reader) != msgId) {
                 Warning() << "NeovimApi{{api_level}}::waitForResponse(): Skipped a response that was not waited for.";

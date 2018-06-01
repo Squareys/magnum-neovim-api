@@ -124,6 +124,9 @@ void Test::testGenerated() {
     CORRADE_COMPARE("helloworld!\n", o.s);
 
     nvim.nvim_ui_attach(25, 25, {});
+
+    const Notification notification = nvim.waitForNotification();
+    CORRADE_VERIFY(notification.method != NotificationType::Timeout);
 }
 
 }
