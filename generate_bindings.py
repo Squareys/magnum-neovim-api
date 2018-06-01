@@ -13,6 +13,56 @@ import re
 import jinja2
 import datetime
 
+NOTIFICATIONS = [
+    # ui-global
+    ("set_title", {"title": "String"}),
+    ("set_icon", {"icon": "String"}),
+    ("mode_info_set", {"cursor_style_enabled": "Boolean", "mode_info": "Dictionary"}),
+    ("option_set", {"name": "String", "value": "Object"}),
+    ("mode_change", {"mode": "String", "mode_idx": "Integer"}),
+    ("mouse_on", None),
+    ("mouse_off", None),
+    ("busy_on", None),
+    ("busy_off", None),
+    ("update_menu", None),
+    ("bell", None),
+    ("visual_bell", None),
+
+    # grid-events
+    ("resize", {"width": "Integer", "height": "Integer"}),
+    ("clear", None),
+    ("eol_clear", None),
+    ("cursor_goto", {"row": "Integer", "col": "Integer"}),
+    ("update_fg", {"color": "Integer"}), #TODO is color an Integer?
+    ("update_bg", {"color": "Integer"}),
+    ("update_sp", {"color": "Integer"}),
+    ("highlight_set", {"attrs": "Dictionary"}),
+    ("put", {"text": "String"}), # TODO UTF8...!
+    ("set_scroll_region", {"top": "Integer", "bot": "Integer", "left": "Integer", "right": "Integer"}),
+    ("scroll", {"count": "Integer"}),
+
+    # ui-popupmenu
+    ("popupmenu_show", {"items": "ArrayOf(ArrayOf(String, 4))", "selected": "Boolean", "row": "Integer", "col": "Integer"}), # TODO Custom type maybe?
+    ("popupmenu_select", {"selected": "Integer"}),
+    ("popupmenu_hide", None),
+
+    # ui-tabline
+    ("tabline_update", {"curtab": "Tabpage", "tabs": "ArrayOf(Dictionary)"}),
+
+    # ui-cmdline
+    ("cmdline_show", {"content": "ArrayOf(CommandLineLine)", "pos": "Integer", "firstc": "String", "prompt": "String", "indent": "Integer", "level": "Integer"}), # TODO Command line contents type: [[attrs, line], ...]
+    ("cmdline_pos", {"pos": "Integer", "level": "Integer"}),
+    ("cmdline_special_char", {"c": "String", "shift": "Boolean", "level": "Integer"}), # TODO what is c?
+    ("cmdline_hide", None),
+    ("cmdline_block_show", dict({"lines": "ArrayOf(CommandLineLine)"})),
+    ("cmdline_block_append", {"line": "CommandLineLine"}),
+    ("cmdline_block_hide", None),
+
+    # ui-wildmenu
+    ("wildmenu_show", {"items": "ArrayOf(String)"}),
+    ("wildmenu_select", {"selected": "Integer"}),
+    ("wildmenu_hide", None),
+]
 
 def decutf8(inp):
     """
@@ -60,8 +110,6 @@ class NeovimTypeVal:
             'Boolean': 'bool',
             'Float': 'Double',
             'Object': 'Object',
-            'Array': 'Corrade::Containers::Array<Object>',
-            'Dictionary': 'const std::unordered_map<std::string, Object>&',
         }
 
     # msgpack extension types
@@ -104,8 +152,12 @@ class NeovimTypeVal:
         """Return the native type for this Neovim type."""
         if typename == 'void':
             return typename
+        if typename == 'Array':
+            return 'Corrade::Containers::Array<Object>' if out else 'Corrade::Containers::ArrayView<Object>&'
         if typename == 'String':
-            return "std::string" if out else "const std::string&"
+            return 'std::string' if out else 'const std::string&'
+        elif typename == 'Dictionary':
+            return 'std::unordered_map<std::string, Object>' if out else 'const std::unordered_map<std::string, Object>&'
         elif typename in cls.SIMPLETYPES:
             return cls.SIMPLETYPES[typename]
         elif typename in cls.EXTTYPES:
@@ -174,6 +226,12 @@ class Function:
         return '%s %s(%s)' % (self.return_type.neovim_type, self.name, params)
 
 
+class Notification:
+    def __init__(self, name="", param_dict=dict()):
+        self.name = name
+        #self.parameters = [NeovimTypeVal(t, n, out=False) for n, t in param_dict.items()] if param_dict is not None else []
+
+
 def main():
     parser = argparse.ArgumentParser(description="Generate C++ API bindings for the Neovim msgpack-rpc API")
     parser.add_argument("-n", "--nvim", help="path to nvim executable", default="nvim")
@@ -211,6 +269,7 @@ def main():
     exttypes = {typename: info['id'] for typename, info in api['types'].items()}
     env = {'date': datetime.datetime.now(),
            'functions': [f for f in functions if f.valid],
+           'notifications': [Notification(t[0], t[1]) for t in NOTIFICATIONS],
            'exttypes': exttypes,
            'api_level': api_level}
 
