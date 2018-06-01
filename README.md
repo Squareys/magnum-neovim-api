@@ -45,7 +45,7 @@ You can then run a function like this:
     // ...
 
     NeovimApi::NeovimApi2 nvim{6666};
-    nvim.nvim_eval("'hello' . 'world!\n'");
+    Object result = nvim.nvim_eval("'hello' . 'world!\n'");
 ~~~
 
 or just run the test `src/Test/NeovimApiTest.cpp`.
