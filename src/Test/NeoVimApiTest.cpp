@@ -88,18 +88,6 @@ void Test::test() {
     Containers::Array<char> receiveBuffer{Containers::DefaultInit, 256};
     Containers::ArrayView<char> response = client.receive(receiveBuffer);
 
-    /*
-    mpack_tree_t tree;
-    mpack_tree_init(&tree, response.data, response.size);
-    CORRADE_VERIFY(mpack_tree_try_parse(&tree));
-    mpack_node_t root = mpack_tree_root(&tree);
-    mpack_node_print(root);
-
-    CORRADE_VERIFY(mpack_tree_destroy(&tree) == mpack_ok);
-    */
-
-    mpack_print(response.data(), response.size());
-
     mpack_reader_t reader;
     mpack_reader_init_data(&reader, response.data(), response.size());
     mpack_expect_array_max(&reader, 4);
