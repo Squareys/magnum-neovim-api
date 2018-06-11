@@ -13,7 +13,7 @@ import re
 import jinja2
 import datetime
 
-NOTIFICATIONS = [
+EVENTS = [
     # ui-global
     ("set_title", {"title": "String"}),
     ("set_icon", {"icon": "String"}),
@@ -226,7 +226,7 @@ class Function:
         return '%s %s(%s)' % (self.return_type.neovim_type, self.name, params)
 
 
-class Notification:
+class Event:
     def __init__(self, name="", param_dict=dict()):
         self.name = name
         #self.parameters = [NeovimTypeVal(t, n, out=False) for n, t in param_dict.items()] if param_dict is not None else []
@@ -269,7 +269,7 @@ def main():
     exttypes = {typename: info['id'] for typename, info in api['types'].items()}
     env = {'date': datetime.datetime.now(),
            'functions': [f for f in functions if f.valid],
-           'notifications': [Notification(t[0], t[1]) for t in NOTIFICATIONS],
+           'events': [Event(e[0], e[1]) for e in EVENTS],
            'exttypes': exttypes,
            'api_level': api_level}
 

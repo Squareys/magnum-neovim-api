@@ -8,8 +8,6 @@ namespace NeovimApi {
 using namespace Corrade;
 using namespace Magnum;
 
-const char** getNotificationTypeStrings();
-
 void mpack_write(mpack_writer_t* writer, const Vector2i& val) {
     mpack_write_i32(writer, val.x());
     mpack_write_i32(writer, val.y());
@@ -189,7 +187,9 @@ Int NeovimApi{{api_level}}::dispatch(const std::string& func, Args... args) {
 }
 
 Notification NeovimApi{{api_level}}::handleNotification(mpack_reader_t& reader) {
-    const NotificationType func = (NotificationType)mpack_expect_enum(&reader, getNotificationTypeStrings(), Int(NotificationType::Count));
+    char* notificationName = mpack_expect_cstr_alloc(&reader, 2048);
+    std::string func{notificationName};
+    MPACK_FREE(notificationName);
 
     /* Get parameter binary data */
     const char* remainingBuffer;
@@ -209,7 +209,7 @@ Notification NeovimApi{{api_level}}::waitForNotification(Int timeout) {
     do {
         Containers::ArrayView<char> response = _socket.receive(_receiveBuffer, timeout);
         if(response.size() == 0 || response.data() == nullptr) {
-            return {NotificationType::Timeout, nullptr};
+            return {"", nullptr};
         }
         if(response.size() == _receiveBuffer.size()) {
             Warning() << "NeovimApi{{api_level}}::waitForResponse(): Receive buffer was full";
@@ -226,8 +226,14 @@ Notification NeovimApi{{api_level}}::waitForNotification(Int timeout) {
             return handleNotification(reader);
         } else if(type == MessageType::Response) {
             Error() << "Responses while waiting for notifications not implemented";
+
         } else if(type == MessageType::Request) {
             Error() << "Requests while waiting for notifications not implemented";
+
+            char* methodName = mpack_expect_cstr_alloc(&reader, 2048);
+            Error() << "Method name:" << methodName;
+            MPACK_FREE(methodName);
+
         } else {
             Error() << "Unknown message type" << Int(type);
         }
@@ -296,14 +302,14 @@ auto NeovimApi{{api_level}}::waitForResponse(Int msgId, Int timeout) {
     } while(true);
 }
 
-static const char* NotificationTypeStrings[]{
-{% for n in notifications %}
-    "{{ n.name }}",
+static const char* eventTypeStrings[]{
+{% for e in events %}
+    "{{ e.name }}",
 {% endfor %}
 };
 
-const char** getNotificationTypeStrings() {
-    return NotificationTypeStrings;
+const char** getEventTypeStrings() {
+    return eventTypeStrings;
 }
 
 
@@ -320,5 +326,18 @@ const char** getNotificationTypeStrings() {
 {% endif %}
 }
 {% endfor %}
+
+
+Debug& operator<<(Debug& debug, const EventType value) {
+    switch(value) {
+        #define _c(value) case EventType::value: return debug << "NeovimApi::EventType::" #value;
+{% for e in events %}
+        _c({{ e.name }})
+{% endfor %}
+        #undef _c
+    }
+
+    return debug << "NeovimApi::EventType::(invalid)";
+}
 
 } // Namespace

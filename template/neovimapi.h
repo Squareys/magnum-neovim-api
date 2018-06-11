@@ -27,13 +27,15 @@ enum class MessageType: Int {
     Notification = 2
 };
 
-enum class NotificationType: Int {
-    Timeout = -1,
-{% for n in notifications %}
-    {{ n.name }},
+enum class EventType: Int {
+{% for e in events %}
+    {{ e.name }},
 {% endfor %}
-    Count
+    Count,
 };
+
+/** @debugoperatorenum{NeovimApi::EventType} */
+Magnum::Debug& operator<<(Magnum::Debug& debug, EventType value);
 
 /**
 @brief A multi-type storage
@@ -58,10 +60,13 @@ A message from the server to the client.
 */
 struct Notification {
     /** Method called by the server */
-    NotificationType method;
+    std::string methodName;
     /** Parameters, binary data in msgpack format, the parameters array. */
     Corrade::Containers::Array<char> parameters;
 };
+
+/** Get event type strings for use with mpack_expect_enum() */
+const char** getEventTypeStrings();
 
 /**
 @brief A neovim API client
