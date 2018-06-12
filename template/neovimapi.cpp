@@ -43,7 +43,7 @@ void mpack_write(mpack_writer_t* writer, const std::unordered_map<std::string, O
 }
 
 template<typename T>
-void mpack_write(mpack_writer_t* writer, Containers::ArrayView<T> data) {
+void mpack_write(mpack_writer_t*) {
     mpack_start_array(writer, data.size());
     for(const auto& e : data) {
         mpack_write(writer, e);
@@ -72,15 +72,15 @@ Object mpack_read_object(mpack_reader_t* reader) {
     return result;
 }
 
+void mpack_write(mpack_writer_t*) {}
+
 template<typename T, typename... Args>
 void mpack_write(mpack_writer_t* writer, T value, Args... args) {
     mpack_write(writer, value);
     mpack_write(writer, args...);
 }
 
-void mpack_write(mpack_writer_t* writer) {}
-
-template<typename T> T mpack_read(mpack_reader_t* reader);
+template<typename T> T mpack_read(mpack_reader_t*);
 
 template<>
 bool mpack_read<bool>(mpack_reader_t* reader) {
@@ -186,33 +186,24 @@ Int NeovimApi{{api_level}}::dispatch(const std::string& func, Args... args) {
     return msgId;
 }
 
-Notification NeovimApi{{api_level}}::handleNotification(mpack_reader_t& reader) {
-    char* notificationName = mpack_expect_cstr_alloc(&reader, 2048);
-    std::string func{notificationName};
-    MPACK_FREE(notificationName);
-
-    /* Get parameter binary data */
-    const char* remainingBuffer;
-    const size_t remainingCount = mpack_reader_remaining(&reader, &remainingBuffer);
-    Notification n{func, Containers::Array<char>{Containers::NoInit, remainingCount}};
-    std::copy_n(remainingBuffer, remainingCount, n.parameters.data());
-    return n;
-}
-
-Notification NeovimApi{{api_level}}::waitForNotification(Int timeout) {
+std::unique_ptr<Notification> NeovimApi2::waitForNotification(Int timeout) {
     if(!_notifications.empty()) {
-        Notification n = std::move(*_notifications.begin());
+        /* Move notification to heap */
+        auto n = std::move(_notifications.front());
+        /* Pop notification */
         _notifications.erase(_notifications.begin());
-        return n;
+        /* Transfer ownership of notification to caller */
+        return std::move(n);
     }
 
     do {
         Containers::ArrayView<char> response = _socket.receive(_receiveBuffer, timeout);
+        Debug() << "Received" << response.size() << "/" << _receiveBuffer.size();
         if(response.size() == 0 || response.data() == nullptr) {
-            return {"", nullptr};
+            return std::make_unique<Notification>(Containers::Array<char>(nullptr));
         }
         if(response.size() == _receiveBuffer.size()) {
-            Warning() << "NeovimApi{{api_level}}::waitForResponse(): Receive buffer was full";
+            Warning() << "NeovimApi2::waitForResponse(): Receive buffer was full";
             // TODO: Handle requests over multiple buffers
         }
 
@@ -223,7 +214,7 @@ Notification NeovimApi{{api_level}}::waitForNotification(Int timeout) {
         const MessageType type = MessageType(mpack_expect_i32(&reader));
 
         if(type == MessageType::Notification) {
-            return handleNotification(reader);
+            return std::make_unique<Notification>(response);
         } else if(type == MessageType::Response) {
             Error() << "Responses while waiting for notifications not implemented";
 
@@ -239,6 +230,7 @@ Notification NeovimApi{{api_level}}::waitForNotification(Int timeout) {
         }
     } while(true);
 }
+
 
 template<typename T>
 auto NeovimApi{{api_level}}::waitForResponse(Int msgId, Int timeout) {
@@ -257,7 +249,8 @@ auto NeovimApi{{api_level}}::waitForResponse(Int msgId, Int timeout) {
         const MessageType type = MessageType(mpack_expect_i32(&reader));
 
         if(type == MessageType::Notification) {
-            _notifications.push_back(handleNotification(reader));
+            _notifications.push_back(std::make_unique<Notification>(response));
+
         } else if(type == MessageType::Response) {
             if(mpack_expect_u32(&reader) != msgId) {
                 Warning() << "NeovimApi{{api_level}}::waitForResponse(): Skipped a response that was not waited for.";

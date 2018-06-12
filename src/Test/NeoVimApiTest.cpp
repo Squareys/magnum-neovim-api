@@ -113,8 +113,8 @@ void Test::testGenerated() {
 
     nvim.nvim_ui_attach(25, 25, {});
 
-    const Notification notification = nvim.waitForNotification();
-    CORRADE_VERIFY(notification.method != NotificationType::Timeout);
+    std::unique_ptr<Notification> notification = nvim.waitForNotification();
+    CORRADE_COMPARE("redraw", notification->methodName());
 }
 
 }

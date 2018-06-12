@@ -58,11 +58,76 @@ struct Object {
 
 A message from the server to the client.
 */
-struct Notification {
+class Notification {
+public:
+
+    /** @brief Constructor which copies data from an ArrayView
+     * @param data mpack data to copy and then parse
+     *
+     * Copies and parses the mpack tree of given data.
+     */
+    Notification(Corrade::Containers::ArrayView<char> data):
+        _data{Corrade::Containers::DefaultInit, data.size()}
+    {
+        std::copy(data.begin(), data.end(), _data.data());
+        parse();
+    }
+
+    /** @brief Constructor
+     * @param data mpack data to parse
+     *
+     * Parses the mpack tree of given data.
+     */
+    Notification(Corrade::Containers::Array<char>&& data): _data{std::move(data)} {
+        parse();
+    }
+
+    /* @brief Move constructor */
+    Notification(Notification&& other): _data{std::move(other._data)} {
+        _tree = other._tree;
+        _root = other._root;
+        /* other.data will be nullptr and therefore not deinitialized */
+    }
+
+    /** @brief Destructor
+     *
+     * Frees held data and destroys the mpack tree.
+     */
+    ~Notification() {
+        if(_data.data() == nullptr) return;
+        CORRADE_ASSERT(mpack_tree_destroy(&_tree) == mpack_ok, "NeovimApi::Notification::~Notification(): Error parsing notification data",);
+    }
+
     /** Method called by the server */
-    std::string methodName;
-    /** Parameters, binary data in msgpack format, the parameters array. */
-    Corrade::Containers::Array<char> parameters;
+    std::string methodName() const {
+        char* name = mpack_node_cstr_alloc(mpack_node_array_at(_root, 1), 256);
+        std::string func{name};
+        MPACK_FREE(name);
+        return func;
+    }
+
+    /** @brief Get node containing the parameters of this notification */
+    mpack_node_t parameters() const {
+        return mpack_node_array_at(_root, 2);
+    }
+
+    /** @brief Get the underlying mpack tree handle */
+    mpack_tree_t& tree() {
+        return _tree;
+    }
+
+
+private:
+    /* Initialize mpack structures for parsing */
+    void parse() {
+        mpack_tree_init(&_tree, _data.data(), _data.size());
+        mpack_tree_parse(&_tree);
+        _root = mpack_tree_root(&_tree);
+    }
+
+    Corrade::Containers::Array<char> _data;
+    mpack_tree_t _tree;
+    mpack_node_t _root;
 };
 
 /** Get event type strings for use with mpack_expect_enum() */
@@ -116,7 +181,7 @@ public:
      *
      * @see pollNotifications()
      */
-    Notification waitForNotification(Int timeout=-1);
+    std::unique_ptr<Notification> waitForNotification(Int timeout=-1);
 
     /**
      * @brief Poll pending notifications
@@ -124,8 +189,8 @@ public:
      *
      * Copies currently pending notifications and then clears pending notifications.
      */
-    Corrade::Containers::Array<Notification> pollNotifications() {
-        Corrade::Containers::Array<Notification> notifications(Corrade::Containers::DefaultInit, _notifications.size());
+    Corrade::Containers::Array<std::unique_ptr<Notification>> pollNotifications() {
+        Corrade::Containers::Array<std::unique_ptr<Notification>> notifications(Corrade::Containers::DefaultInit, _notifications.size());
         for(int i = 0; i < _notifications.size(); ++i) {
             notifications[i] = std::move(_notifications[i]);
         }
@@ -146,13 +211,12 @@ private:
 
     Corrade::Net::Socket _socket;
     Corrade::Containers::Array<char> _receiveBuffer;
-    std::vector<Notification> _notifications;
+    std::vector<std::unique_ptr<Notification>> _notifications;
 
     int _nextMessageId = 0;
     /* Generate the next message id */
     int nextMessageId() { return _nextMessageId++; }
 
-    Notification handleNotification(mpack_reader_t& reader);
 };
 
 }
