@@ -116,6 +116,10 @@ public:
         return _tree;
     }
 
+    /** @brief Get a view on the underlying data */
+    Corrade::Containers::ArrayView<const char> data() const {
+        return Corrade::Containers::arrayView(_data);
+    }
 
 private:
     /* Initialize mpack structures for parsing */
