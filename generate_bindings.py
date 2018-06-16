@@ -12,57 +12,7 @@ import sys, subprocess, os
 import re
 import jinja2
 import datetime
-
-EVENTS = [
-    # ui-global
-    ("set_title", {"title": "String"}),
-    ("set_icon", {"icon": "String"}),
-    ("mode_info_set", {"cursor_style_enabled": "Boolean", "mode_info": "Dictionary"}),
-    ("option_set", {"name": "String", "value": "Object"}),
-    ("mode_change", {"mode": "String", "mode_idx": "Integer"}),
-    ("mouse_on", None),
-    ("mouse_off", None),
-    ("busy_on", None),
-    ("busy_off", None),
-    ("update_menu", None),
-    ("bell", None),
-    ("visual_bell", None),
-
-    # grid-events
-    ("resize", {"width": "Integer", "height": "Integer"}),
-    ("clear", None),
-    ("eol_clear", None),
-    ("cursor_goto", {"row": "Integer", "col": "Integer"}),
-    ("update_fg", {"color": "Integer"}), #TODO is color an Integer?
-    ("update_bg", {"color": "Integer"}),
-    ("update_sp", {"color": "Integer"}),
-    ("highlight_set", {"attrs": "Dictionary"}),
-    ("put", {"text": "String"}), # TODO UTF8...!
-    ("set_scroll_region", {"top": "Integer", "bot": "Integer", "left": "Integer", "right": "Integer"}),
-    ("scroll", {"count": "Integer"}),
-
-    # ui-popupmenu
-    ("popupmenu_show", {"items": "ArrayOf(ArrayOf(String, 4))", "selected": "Boolean", "row": "Integer", "col": "Integer"}), # TODO Custom type maybe?
-    ("popupmenu_select", {"selected": "Integer"}),
-    ("popupmenu_hide", None),
-
-    # ui-tabline
-    ("tabline_update", {"curtab": "Tabpage", "tabs": "ArrayOf(Dictionary)"}),
-
-    # ui-cmdline
-    ("cmdline_show", {"content": "ArrayOf(CommandLineLine)", "pos": "Integer", "firstc": "String", "prompt": "String", "indent": "Integer", "level": "Integer"}), # TODO Command line contents type: [[attrs, line], ...]
-    ("cmdline_pos", {"pos": "Integer", "level": "Integer"}),
-    ("cmdline_special_char", {"c": "String", "shift": "Boolean", "level": "Integer"}), # TODO what is c?
-    ("cmdline_hide", None),
-    ("cmdline_block_show", dict({"lines": "ArrayOf(CommandLineLine)"})),
-    ("cmdline_block_append", {"line": "CommandLineLine"}),
-    ("cmdline_block_hide", None),
-
-    # ui-wildmenu
-    ("wildmenu_show", {"items": "ArrayOf(String)"}),
-    ("wildmenu_select", {"selected": "Integer"}),
-    ("wildmenu_hide", None),
-]
+import shutil
 
 def decutf8(inp):
     """
@@ -93,6 +43,44 @@ def generate_file(name, template_dir, outfile, **kw):
     template = env.get_template(name)
     with open(outfile, 'w') as fp:
         fp.write(template.render(kw))
+
+
+def parse_events(filename):
+    """
+    Read doc/ui.txt and parse events including their documentation.
+    """
+    events = []
+    cur_event = None
+
+    def finish_event():
+        if cur_event is not None:
+            # remove trailing empty lines
+            while cur_event[1] and not cur_event[1][-1]:
+                cur_event[1].pop()
+            events.append(cur_event)
+
+    with open(filename) as file:
+        for line in file.readlines():
+            if line.startswith('['):
+                finish_event()
+                cur_event = None
+
+                name_end = line.find('"', 2)
+                event_name = line[2:name_end];
+                cur_event = (event_name, [])
+            elif line.startswith('=') or line.startswith('\t'*4):
+                finish_event()
+                cur_event = None
+            else:
+                if cur_event is not None:
+                    start = 0 if line[0] != '\t' else 1
+                    # Strip newline at end
+                    cur_event[1].append(line[start:-1])
+
+    finish_event()
+    cur_event = None
+
+    return events
 
 
 class UnsupportedType(Exception):
@@ -227,9 +215,9 @@ class Function:
 
 
 class Event:
-    def __init__(self, name="", param_dict=dict()):
+    def __init__(self, name, description):
         self.name = name
-        #self.parameters = [NeovimTypeVal(t, n, out=False) for n, t in param_dict.items()] if param_dict is not None else []
+        self.description = description
 
 
 def main():
@@ -243,6 +231,11 @@ def main():
     nvim = args.nvim
     template_dir = args.template_dir
     outpath = args.output
+    nvim_dir = os.path.dirname(shutil.which(nvim))
+    doc_dir = os.path.join(nvim_dir, "..", "share", "nvim", "runtime", "doc")
+    ui_doc_filename = os.path.join(doc_dir, "ui.txt")
+
+    events = parse_events(ui_doc_filename)
 
     try:
         api = get_api_info(nvim)
@@ -269,7 +262,7 @@ def main():
     exttypes = {typename: info['id'] for typename, info in api['types'].items()}
     env = {'date': datetime.datetime.now(),
            'functions': [f for f in functions if f.valid],
-           'events': [Event(e[0], e[1]) for e in EVENTS],
+           'events': [Event(e[0], e[1]) for e in events],
            'exttypes': exttypes,
            'api_level': api_level}
 

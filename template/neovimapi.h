@@ -27,9 +27,18 @@ enum class MessageType: Int {
     Notification = 2
 };
 
+/**
+@brief Ui event type enum
+*/
 enum class EventType: Int {
 {% for e in events %}
+    /**
+{% for line in e.description %}
+     *{{ (" " if line else "") + line }}
+{% endfor %}
+     */
     {{ e.name }},
+
 {% endfor %}
     Count,
 };
