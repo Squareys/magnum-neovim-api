@@ -30,7 +30,7 @@
 
 #include "Corrade/Net/Socket.h"
 
-#include "neovimapi2.h"
+#include "neovimapi4.h"
 
 namespace NeovimApi {
 
@@ -39,6 +39,7 @@ using namespace Magnum;
 
 struct Test: TestSuite::Tester {
     explicit Test();
+    ~Test();
 
     void test();
 
@@ -50,11 +51,16 @@ Test::Test() {
         &Test::test,
         &Test::testGenerated
     });
+
+    // TODO find neovim executable
+    //std::system("nvim.exe --headless -c \"call serverstart('127.0.0.1:6666')\" &");
+}
+
+Test::~Test() {
+    //std::system("killall nvim.exe");
 }
 
 void Test::test() {
-    // ./nvim.exe --headless -c "call serverstart('127.0.0.1:6666')"
-
     char* buffer = nullptr;
     size_t size = 0;
     mpack_writer_t writer;
@@ -107,7 +113,7 @@ void Test::test() {
 }
 
 void Test::testGenerated() {
-    NeovimApi::NeovimApi2 nvim{6666};
+    NeovimApi::NeovimApi4 nvim{6666};
     Object o = nvim.nvim_eval("'hello' . 'world!\n'");
     CORRADE_COMPARE("helloworld!\n", o.s);
 

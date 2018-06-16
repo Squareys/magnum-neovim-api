@@ -38,10 +38,10 @@ add_custom_target(generate ALL
            -t ${CMAKE_SOURCE_DIR}/template
            -o ${CMAKE_CURRENT_BINARY_DIR}
 )
-set_source_files_properties(${CMAKE_CURRENT_BINARY_DIR}/neovimapi2.cpp PROPERTIES GENERATED TRUE)
+set_source_files_properties(${CMAKE_CURRENT_BINARY_DIR}/neovimapi4.cpp PROPERTIES GENERATED TRUE)
 
 # Compile generated sources to a static lib
-add_library(NeovimApi STATIC ${CMAKE_CURRENT_BINARY_DIR}/neovimapi2.cpp)
+add_library(NeovimApi STATIC ${CMAKE_CURRENT_BINARY_DIR}/neovimapi4.cpp)
 target_link_libraries(NeovimApi Magnum::Magnum CorradeNet Corrade::Containers mpack)
 target_compile_features(NeovimApi PRIVATE cxx_std_17)
 add_dependencies(NeovimApi generate)

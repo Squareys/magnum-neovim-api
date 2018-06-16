@@ -42,15 +42,6 @@ void mpack_write(mpack_writer_t* writer, const std::unordered_map<std::string, O
     mpack_finish_map(writer);
 }
 
-template<typename T>
-void mpack_write(mpack_writer_t*) {
-    mpack_start_array(writer, data.size());
-    for(const auto& e : data) {
-        mpack_write(writer, e);
-    }
-    mpack_finish_array(writer);
-}
-
 Object mpack_read_object(mpack_reader_t* reader) {
     Object result{};
     const mpack_tag_t tag = mpack_peek_tag(reader);
@@ -150,6 +141,10 @@ template<>
 Containers::Array<std::string> mpack_read<Containers::Array<std::string>>(mpack_reader_t* reader) {
     return mpack_read_array<std::string>(reader);
 }
+template<>
+Containers::Array<std::unordered_map<std::string, Object>> mpack_read<Containers::Array<std::unordered_map<std::string, Object>>>(mpack_reader_t* reader) {
+    return mpack_read_array<std::unordered_map<std::string, Object>>(reader);
+}
 
 NeovimApi{{api_level}}::NeovimApi{{api_level}}(int port, int receiveBufferSize):
     NeovimApi{{api_level}}{"127.0.0.1", port, receiveBufferSize}
@@ -186,7 +181,7 @@ Int NeovimApi{{api_level}}::dispatch(const std::string& func, Args... args) {
     return msgId;
 }
 
-std::unique_ptr<Notification> NeovimApi2::waitForNotification(Int timeout) {
+std::unique_ptr<Notification> NeovimApi{{api_level}}::waitForNotification(Int timeout) {
     if(!_notifications.empty()) {
         /* Move notification to heap */
         auto n = std::move(_notifications.front());
@@ -203,7 +198,7 @@ std::unique_ptr<Notification> NeovimApi2::waitForNotification(Int timeout) {
             return std::make_unique<Notification>(Containers::Array<char>(nullptr));
         }
         if(response.size() == _receiveBuffer.size()) {
-            Warning() << "NeovimApi2::waitForResponse(): Receive buffer was full";
+            Warning() << "NeovimApi{{api_level}}::waitForResponse(): Receive buffer was full";
             // TODO: Handle requests over multiple buffers
         }
 
