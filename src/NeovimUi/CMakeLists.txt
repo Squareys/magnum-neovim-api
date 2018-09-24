@@ -21,7 +21,7 @@
 #
 
 find_package(Corrade REQUIRED TestSuite Containers)
-find_package(Magnum REQUIRED GlfwApplication)
+find_package(Magnum REQUIRED GlfwApplication Text Shaders)
 
 set_directory_properties(PROPERTIES CORRADE_USE_PEDANTIC_FLAGS ON)
 
@@ -30,5 +30,8 @@ add_executable(NeovimUi NeovimUi.cpp)
 target_link_libraries(NeovimUi
     Magnum::Application
     NeovimApi
+    Magnum::Text
+    Magnum::Shaders
+    Magnum::GL
 )
 
